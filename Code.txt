@@ -1,0 +1,101 @@
+
+# Efficient computational code for computing in-control probability of single point and run length properties of control charts 
+
+# Note: for using the code, add package "chi"
+
+install.packages("chi")    # Installation of required package
+library(chi)
+
+Onepoint=function(ARLT,k)  # Start of function for computing P0
+	{	
+			b=0;
+			a=c(1:100000)/100000;diff=abs(ARLT*(1-a)*a^k+a^k-1);pp=round(a[which(diff<=0.001)],4)
+			return(pp[which(pp>=0 && pp<1)])	
+	}  # End of function for computing P0             
+
+PR=function(ARLT,k,n,chart,side,q,delta,d,d1)                # Start of function for computing P1
+	{
+p0=Onepoint(ARLT,k)
+p1=c()
+			if(chart=="Xbar")
+				{
+					 if(side=="U"){zu=qnorm(1-p0);p1=round((1-pnorm(zu-(delta*sqrt(n)))),4)}
+ 					 if(side=="L"){zu=qnorm(p0);p1=round((pnorm(zu-(delta*sqrt(n)))),4)}
+				}
+			if(chart=="S2")
+				{
+					if(side=="U"){wu=qchisq(1-p0,n-1);p1=1-pchisq(wu/delta,n-1)}
+					if(side=="L"){wu=qchisq(p0,n-1);p1=pchisq(wu/delta,n-1)}
+				}
+			 if(chart=="S")
+				{
+					if(side=="U"){wu=qchi(1-p0,n-1);p1=1-pchi(wu/delta,n-1)}
+					if(side=="L"){wu=qchi(p0,n-1);p1=pchi(wu/delta,n-1)}
+				}
+			if(chart=="T2")
+				{ 
+					if(side=="U"){wu=qchisq(1-p0,q);p1=1-pchisq(wu,q,d^2*n)}
+					if(side=="L"){wu=qchisq(p0,q);p1=pchisq(wu,q,d^2*n)}
+				}
+			if(chart=="|S|")
+				{
+					r=2*n-4
+					if(side=="U"){wu=qchisq(1-p0,r);p1=1-pchisq(wu/d1,r)}
+					if(side=="L"){wu=qchisq(p0,r);p1=pchisq(wu/d1,r)}
+				}
+				
+				return(p1)
+
+	} #   # End of function for computing P1
+
+
+RRP=function(ARLT,k,n,chart,side,q,PR="ALL",delta,d,d1)                  # Start of function for computing run length property 
+		{
+			
+		p1=PR(ARLT,k,n,chart,side,q,delta,d,d1)
+				
+				F1RL=(1-p1^k)/((1-p1)*(p1)^k)  
+				F2RL=((2*(F1RL+p1^k-(k+1)))/((1-p1)*p1^k))
+				F3RL=round((3*((1-(k+1)*(1-p1)*p1^k)*F2RL-k*(k-1)*p1^k-k*(k+1)*(1-p1)*p1^k*F1RL)/((1-p1)*p1^k)),3) #Third factorial moment 
+				F4RL=round((4*(1-(k+1)*(1-p1)*p1^k)*F3RL-6*k*(k+1)*(1-p1)*p1^k*F2RL-4*k*(k+1)*(k-1)*(1-p1)*p1^k*F1RL-4*k*(k-1)*(k-2)*p1^k)/((1-p1)*p1^k),3)
+	                        R1RL=round(F1RL,2) 
+				R2RL=round(F2RL+F1RL,2)
+				R3RL=round(F3RL+3*F2RL+F1RL,2)
+				R4RL=round(F4RL+6*F3RL+7*F2RL+F1RL,0)
+				M2RL=round(R2RL-(R1RL)^2,0)
+				M3RL=round(R3RL-3*R1RL*R2RL+2*(R1RL)^3,0)
+				M4RL=round(R4RL-4*R1RL*R3RL+6*R2RL*R1RL^2-3*R1RL^4,0)
+				ARL=round(F1RL,4)
+				VRL=round(M2RL,4)
+				SDRL=round(sqrt(M2RL),4)
+				CVRL=round(100*SDRL/ARL,4)
+                               	
+				if(PR=="F1RL"){aa=F1RL}
+				if(PR=="F2RL"){ aa=F2RL}
+				if(PR=="F3RL"){aa=F3RL}
+				if(PR=="F4RL"){aa=F4RL}
+                        	if(PR=="R1RL"){aa=R1RL}
+				if(PR=="R2RL"){aa=R2RL^(1/2)}
+				if(PR=="R3RL"){aa=R3RL^(1/3)}
+				if(PR=="R4RL"){aa=R4RL^(1/4)}
+				if(PR=="M2RL"){aa=M2RL^(1/2)}
+				if(PR=="M3RL"){aa=M3RL^(1/3)}
+				if(PR=="M4RL"){aa=M4RL^(1/4)}
+				if(PR=="ARL"){aa=ARL}
+				if(PR=="VRL"){aa=VRL}
+				if(PR=="SDRL"){aa=SDRL}
+				if(PR=="CVRL"){aa=CVRL}
+				
+				if(PR=="ALL"){bb1=c("ARL","R2RL","R3RL","R4RL","SDRL","M3RL","M4RL","CVRL")
+				aa=round(cbind(R1RL^(1/1),R2RL^(1/2),R3RL^(1/3),R4RL^(1/4),M2RL^(1/2),M3RL^(1/3),M4RL^(1/4), CVRL^1),2)}
+				if(chart=="|S|"){delta=d1}
+				if(chart=="T2"){delta=d}
+				if(PR!="ALL"){cat("\n","\n","\t","\t","\t","SUMMARY","\n","\n","\t","Control Chart","\t","\t",chart,"\n","\t", "Side","\t","\t","\t",side,"\n", "\t","Rule Type", "\t","\t",k,"/",k,"\n","\t","ARLT", "\t","\t","\t",ARLT,"\n","\t","Sample Size","\t","\t",n,"\n","\t","Delta/d/d1","\t","\t",delta,"\n","\t","P0","\t","\t","\t",Onepoint(ARLT,k),"\n","\t",PR,"\t","\t","\t",aa,"\n")}
+				if(PR=="ALL"){cat("\n","\n","\t","\t","\t","SUMMARY","\n","\n","\t","Control Chart","\t","\t",chart,"\n","\t", "Side","\t","\t","\t",side,"\n", "\t","Rule Type", "\t","\t",k,"/",k,"\n","\t","ARLT", "\t","\t","\t",ARLT,"\n","\t","Sample Size","\t","\t",n,"\n","\t","Delta/d/d1","\t","\t",delta,"\n","\t","P0","\t","\t","\t",Onepoint(ARLT,k),"\n","\t",bb1,"\t","\t","\t","\n","\t",aa,"\n")}
+
+	} # End of function for computing run length property 
+
+# Example for calling RRP() function
+
+RRP(ARLT=370,k=1,n=3,chart="Xbar",side="U",q=3,PR="SDRL",delta=0,d,d1)
+
